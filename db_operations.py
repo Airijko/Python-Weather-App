@@ -8,6 +8,7 @@ db = DBOperations('weather_data.db')
 """
 
 import sqlite3
+from dbcm import DBCM
 
 # TEST
 

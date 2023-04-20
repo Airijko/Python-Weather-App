@@ -3,6 +3,10 @@ Classes:
 - PlotOperations: A class for plotting weather data using Matplotlib library.
 """
 
+# pip install matplotlib
+from db_operations import DBOperations
+from dbcm import DBCM
+from scrape_weather import WeatherScraper
 import matplotlib.pyplot as plot
 
 class PlotOperations:
