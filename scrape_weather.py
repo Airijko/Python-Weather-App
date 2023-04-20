@@ -1,6 +1,6 @@
 """
 Python Final Project - Weather Processing App
-Jojo Jimena
+Author: Jojo Jimena
 
 Classes:
 - WeatherScraper: A class for scraping weather data.
