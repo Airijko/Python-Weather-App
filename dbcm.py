@@ -1,6 +1,14 @@
+"""
+Classes:
+- DBCM: A context manager that provides a connection to a SQLite database.
+"""
+
 import sqlite3
 
 class DBCM:
+    """
+    DBCM is a context manager that provides a connection to a database.
+    """
     def __init__(self, db_path):
         self.db_path = db_path
 
