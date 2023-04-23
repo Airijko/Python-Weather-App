@@ -8,7 +8,7 @@ db = DBOperations('weather_data.db')
 """
 
 import sqlite3
-from dbcm import DBCM
+# from dbcm import DBCM
 
 # TEST
 
@@ -17,6 +17,7 @@ class DBOperations:
     This class is used to perform database operations.
     """
     def __init__(self, db_path):
+        """initialize the class."""
         self.db_path = db_path
 
     def fetch_data(self, location, start_date, end_date):

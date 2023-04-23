@@ -10,6 +10,7 @@ class DBCM:
     DBCM is a context manager that provides a connection to a database.
     """
     def __init__(self, db_file):
+        """initialize the class."""
         self.db_file = db_file
 
     def __enter__(self):

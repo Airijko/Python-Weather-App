@@ -1,108 +1,137 @@
 """
-Python Final Project - Weather Processing App
-Author: Jojo Jimena
-
 Classes:
-- WeatherScraper: A class for scraping weather data.
-
-Functions:
-- Main: The main method that runs the program.
+- WeatherScraper: This class will be used to scrape data from the Environment Canada website
 """
 
-# pip install requests
-# pip install beautifulsoup4
-
-from datetime import date, timedelta
-import requests
-from bs4 import BeautifulSoup
-
-# Testing how soup works
-# url = ('https://climate.weather.gc.ca/climate_data/daily_data_e.html?'
-#        'StationID=27174&timeframe=2&StartYear=1840&EndYear=2018&Day=1&'
-#        'Year=2018&Month=5')
-# r = requests.get(url, allow_redirects=True)
-# soup = BeautifulSoup(r.content, 'html.parser')
-# test = soup.find('div', class_='table-responsive')
-# print(test)
-# print(help(soup))
+from html.parser import HTMLParser
+from datetime import datetime
+import urllib.request
+import re
 
 
 class WeatherScraper:
-    """
-    A web scraper that extracts daily
-    temperature data in Winnipeg
-    """
-    # Constructor
-    def __init__(self, url):
-        self.url = url
-        self.weather_data = {}
+    """This class will be used to scrape data from the Environment Canada"""
 
-    # Method
-    def get_weather_data(self):
-        """
-        Get weather data method that parses the HTML content
-        from the website and extracts the data
-        """
-        # Requests to the website
-        response = requests.get(self.url)
+    def __init__(self):
+        self.parser = self.MyHTMLParser()
 
-        # Parse the HTML content
-        soup = BeautifulSoup(response.content, 'html.parser')
+    def scrape_weather(self, url):
+        """Scrapes the data from the Environment Canada website and returns it as a dictionary."""
+        with urllib.request.urlopen(url) as response:
+            html = str(response.read())
+        parser = self.MyHTMLParser()
+        parser.feed(html)
+        return parser.convert_weather_data()
 
-        # Find the table that contains the weather data
-        table = soup.find('div', class_='table-responsive')
 
-        # Start from the current date to oldest available weather data
-        today = date.today()
-        date_str = today.strftime('%Y-%m-%d')
-        daily_temps = {}
+    def import_weather(self):
+        """Scrapes the data from the Environment Canada website and imports it into the database."""
+        scraped_weather = {}
+        month, year = datetime.now().month, datetime.now().year
+        prev_weather = None
 
         while True:
+            url = 'https://climate.weather.gc.ca/climate_data/daily_data_e.html?StationID=27174&' \
+                 f'timeframe=2&StartYear=1840&EndYear=2018&Day=2&Year={year}&Month={month}'
+            weather_data = self.scrape_weather(url)
+            print(weather_data)
 
-            url = self.url.replace(date_str, '')
-            response = requests.get(url)
-            soup = BeautifulSoup(response.content, 'html.parser')
-            table = soup.find('div', class_='table-responsive')
-            row = table.find_all('tr')[1]
-            cols = row.find_all('td')
-            max_temp = float(cols[1].text)
-            min_temp = float(cols[2].text)
-            mean_temp = float(cols[3].text)
-            daily_temps = {'Max': max_temp, 'Min': min_temp, 'Mean': mean_temp}
+            if weather_data:
+                scraped_weather.update(scraped_weather)
 
-            # Add the weather data to the dictionary
-            self.weather_data[date_str] = daily_temps
-
-            # Move on to the previous day
-            yesterday = today - timedelta(1)
-            date_str = yesterday.strftime('%Y-%m-%d')
-
-            # Check if we have reached the end of the available weather data
-            if date_str in self.weather_data:
+            if weather_data == prev_weather and weather_data:
                 break
 
-def main():
-    """
-    Main method that runs the program
-    """
-    # Define the starting URL with today's date
-    today = date.today()
-    url = ('http://climate.weather.gc.ca/climate_data/daily_data_e.html?'
-           f'StationID=27174&timeframe=2&StartYear=1840&EndYear=2018&Day={today.day}'
-           f'&Year={today.year}&Month={today.month}#')
+            prev_weather = weather_data
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+
+        return scraped_weather
+
+    class MyHTMLParser(HTMLParser):
+        """This class will be used to scrape data from the Environment Canada"""
+
+        def __init__(self):
+            super().__init__()
+            self.table_found = False
+            self.title_found = False
+            self.tr_found = False
+            self.td_found = False
+            self.table_data = []
+            self.current_temp = []
+            self.daily_temps_data = []
+
+        def handle_starttag(self, tag, attrs):
+            if tag == "table":
+                self.table_found = True
+            if tag == "tr":
+                self.tr_found = True
+            if tag == "td":
+                self.td_found = True
+            if tag == "abbr":
+                self.title_found = True
+                for attr, value in attrs:
+                    if attr == "title":
+                        try:
+                            date_str = datetime.strptime(value, '%B %d, %Y')
+                            self.table_data.append(date_str.date())
+                            # print(self.table_data)
+                        except ValueError:
+                            pass
+
+        def handle_endtag(self, tag):
+            if tag == "table":
+                self.table_found = False
+            if tag == "tr":
+                if len(self.current_temp) == 3:
+                    self.daily_temps_data.append(self.current_temp[:])
+                self.current_temp.clear()
+                self.tr_found = False
+            if tag == "td":
+                self.td_found = False
+            if tag == "th":
+                self.title_found = False
+
+        def handle_data(self, data):
+            """Handle data from the HTML table"""
+            if self.tr_found and self.td_found:
+                if re.match(r'^-?\d+(?:\.\d{1,2})?$', data) or data == 'M':
+                    if len(self.current_temp) < 3:
+                        self.current_temp.append(data)
+
+        def convert_weather_data(self):
+            """Convert daily_temps_data into a dictionary of dictionaries"""
+            weather_data = {}
+            for date, temps in zip(self.table_data, self.daily_temps_data):
+                daily_temps = {'Max': None, 'Min': None, 'Mean': None}
+                for i, key in enumerate(['Max', 'Min', 'Mean']):
+                    try:
+                        daily_temps[key] = float(temps[i])
+                    except ValueError:
+                        pass
+                weather_data[str(date)] = daily_temps
+            return weather_data
+
+if __name__ == "__main__":
+    myParser = WeatherScraper()
+    myParser = WeatherScraper().import_weather()
 
 
-    # Create an instance of the WeatherScraper class and scrape the weather data
-    scraper = WeatherScraper(url)
-    scraper.get_weather_data()
-
-    for date, temps in scraper.weather_data.items():
-        print(f'Date: {date}')
-        print(f'Max Temp: {temps["Max"]}')
-        print(f'Min Temp: {temps["Min"]}')
-        print(f'Mean Temp: {temps["Mean"]}\n')
-
-# test
-# test = WeatherScraper(url)
-# test.get_weather_data()
-# print(test.weather_data)
+# Testing
+# parser = WeatherScraper()
+# parser = parser.MyHTMLParser()
+# url = 'https://climate.weather.gc.ca/climate_data/daily_data_e.html?StationID=27174&' \
+#       'timeframe=2&StartYear=1840&EndYear=2018&Day=1&Year=2018&Month=5'
+# response = urllib.request.urlopen(url)
+# html = response.read().decode()
+# parser.feed(html)
+# print(parser.table_data)
+# print(parser.daily_temps_data)
+# daily_temps = parser.daily_temps_data
+# weather_data = parser.convert_weather_data()
+# print(daily_temps)
+# print(weather_data)
+# print(weather_data)
+# print(parser.daily_temps_data)
