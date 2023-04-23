@@ -3,27 +3,6 @@ Classes:
 - WeatherProcessor
 """
 
-"""
-Part 4 – User Interaction
-Tasks • Create a weather_processor.py module with a WeatherProcessor class
-inside.
-• When the program starts, present the user with a menu of choices.
-• Allow the user to download a full set of weather data, or to update it.
-◦ When updating, the program should check today’s date and the latest
-date of weather available in the DB, and download what’s missing
-between those two points, without duplicating any data.
-• Allow the user to enter a year range of interest (from year, to year) to
-generate the box plot.
-• Allow the user to enter a month and a year to generate the line plot.
-• Use this class to launch and manage all the other tasks.
-• All user interaction should be self contained in the WeatherProcessor
-class. There should be no user prompt type code anywhere else in the
-program.
-Input User supplies input.
-Output Call the correct class methods to accomplish the tasks.
-
-"""
-
 from datetime import date
 from scrape_weather import WeatherScraper
 from db_operations import DBOperations
