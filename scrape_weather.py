@@ -1,4 +1,6 @@
 """
+Author: Jojo Jimena
+
 Classes:
 - WeatherScraper: This class will be used to scrape data from the Environment Canada website
 """
@@ -19,34 +21,41 @@ class WeatherScraper:
         """Scrapes the data from the Environment Canada website and returns it as a dictionary."""
         with urllib.request.urlopen(url) as response:
             html = str(response.read())
-        parser = self.MyHTMLParser()
-        parser.feed(html)
-        return parser.convert_weather_data()
+        self.parser.clear_data()
+        self.parser.feed(html)
+        return self.parser.convert_weather_data()
 
-
-    def import_weather(self):
-        """Scrapes the data from the Environment Canada website and imports it into the database."""
+    def import_weather_for_month(self, year, month):
+        """Scrapes the data from the Environment Canada website"""
         scraped_weather = {}
-        month, year = datetime.now().month, datetime.now().year
-        prev_weather = None
 
-        while True:
-            url = 'https://climate.weather.gc.ca/climate_data/daily_data_e.html?StationID=27174&' \
-                 f'timeframe=2&StartYear=1840&EndYear=2018&Day=2&Year={year}&Month={month}'
-            weather_data = self.scrape_weather(url)
-            print(weather_data)
+        url = 'https://climate.weather.gc.ca/climate_data/daily_data_e.html?StationID=27174&' \
+            f'timeframe=2&StartYear=1840&EndYear=2018&Day=1&Year={year}&Month={month}'
+        weather_data = self.scrape_weather(url)
+        print(weather_data)
 
-            if weather_data:
-                scraped_weather.update(scraped_weather)
+        if weather_data:
+            scraped_weather.update(weather_data)
 
-            if weather_data == prev_weather and weather_data:
-                break
+        return scraped_weather
 
-            prev_weather = weather_data
-            month -= 1
-            if month == 0:
-                month = 12
-                year -= 1
+    def import_weather_for_years(self, start_year, end_year):
+        """Scrapes the data from the Environment Canada website for a range of years"""
+        scraped_weather = {}
+        year = int(start_year)
+        end_year = int(end_year)
+        while year <= end_year:
+            for month in range(1, 13):
+                url = 'https://climate.weather.gc.ca/climate_data/daily_data_e.html?' \
+                      'StationID=27174&timeframe=2&StartYear=1840' \
+                     f'&EndYear=2018&Day=1&Year={year}&Month={month}'
+                weather_data = self.scrape_weather(url)
+                print(weather_data)
+
+                if weather_data:
+                    scraped_weather.update(weather_data)
+
+            year += 1
 
         return scraped_weather
 
@@ -107,16 +116,25 @@ class WeatherScraper:
             for date, temps in zip(self.table_data, self.daily_temps_data):
                 daily_temps = {'Max': None, 'Min': None, 'Mean': None}
                 for i, key in enumerate(['Max', 'Min', 'Mean']):
-                    try:
-                        daily_temps[key] = float(temps[i])
-                    except ValueError:
-                        pass
+                    if temps[i] != 'M':
+                        daily_temps[key] = temps[i]
                 weather_data[str(date)] = daily_temps
             return weather_data
 
-if __name__ == "__main__":
-    myParser = WeatherScraper()
-    myParser = WeatherScraper().import_weather()
+        def clear_data(self):
+            """Clears the parser's data attributes."""
+            self.table_found = False
+            self.title_found = False
+            self.tr_found = False
+            self.td_found = False
+            self.table_data = []
+            self.current_temp = []
+            self.daily_temps_data = []
+
+# if __name__ == "__main__":
+#     parsed = WeatherScraper()
+#     parsed = parsed.import_weather_for_month('7', '2022')
+#     pased = parsed.import_weather_for_years('2010', '2012')
 
 
 # Testing
